@@ -1,0 +1,18 @@
+[package]
+name = "ronflex"
+version = "0.1.0"
+edition = "2021"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+ntapi = "0.4.0"
+sysinfo = "0.28.4"
+colored = "2.0.0"
+
+[dependencies.windows]
+version = "0.48"
+features = [
+    "Win32_Foundation",
+    "Win32_System_Threading",
+]
