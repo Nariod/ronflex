@@ -1,11 +1,23 @@
 # Ronflex
-Rust offensive tool to suspend all known AV/EDRs processes, using the undocumented NtSuspendProcess API. Made with <3 for pentesters.
+Rust offensive tool to suspend all known AV/EDRs processes, using syscalls and the undocumented NtSuspendProcess API. Made with <3 for pentesters.
 
 ## WARNING
-Ronflex suspends all known AV/EDRs and other security products processes. There is a high chance that the system will be unstable after Ronflex did its thing !
+Ronflex suspends all known AV/EDRs and other security products processes. There is a high chance that the system will be unstable after Ronflex did its thing ! Use at your own risks.
+
+## Known limitations
+At the moment, this tool is not able to suspend processes protected by either Windows "Anti-Tamper" protection or "Credential Guard".
+
+## Todo
+- [x] Loop over known processes to suspend them
+- [x] Support for a specific process target
+- [x] Move the NtSuspendProcess and NtClose API calls to syscalls 
+- [ ] Move the remaining API calls to syscalls
+- [ ] Embbed a method to bypass Windows Anti-Tamper protection
 
 # Quick start
 
+## Binary
+If you're in a  hurry, you will find a ready to deploy x64 binary for Windows. However, you should take time to compile it yourself.
 ## Cross-compile from Linux
 
 Install and configure Rust:
@@ -29,13 +41,16 @@ Build the binary:
 - `cargo build --release`
 
 ## Usage
-Run the binary with the highest privileges you can, and without argument to freeze all known security products:
+Run the binary with the highest privileges you can and without argument to freeze all known security products:
 - `ronflex.exe`
 
 Alternatively, you can freeze a specific target process by passing the exact process name:
-- `ronflex.exe msteams.exe`
+- `ronflex.exe notepad.exe`
+
+![Notepad put to sleep](img/ronflex_notepad.png)
 
 ## Credits
+- janoglezcampos for his [rust_syscalls](https://github.com/janoglezcampos/rust_syscalls) project
 - [The Sliver project](https://github.com/BishopFox/sliver) for the list of known AV/EDRs processes
 - Rust discord
 - StackOverflow

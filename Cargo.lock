@@ -182,9 +182,18 @@ name = "ronflex"
 version = "0.1.0"
 dependencies = [
  "colored",
- "ntapi",
+ "rust_syscalls",
  "sysinfo",
  "windows",
+]
+
+[[package]]
+name = "rust_syscalls"
+version = "0.1.0"
+source = "git+https://github.com/Nariod/rust_syscalls#162451aaf095c8cb8c5e6b33ebf0bf44c62aca34"
+dependencies = [
+ "ntapi",
+ "winapi",
 ]
 
 [[package]]

