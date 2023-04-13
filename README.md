@@ -1,11 +1,11 @@
 # Ronflex
-Attempts to suspend all known AV/EDRs processes using syscalls and the undocumented NtSuspendProcess API. Made with <3 for pentesters. Written in Rust.
+Attempts to suspend all known AV/EDRs processes on Windows using syscalls and the undocumented NtSuspendProcess API. Made with <3 for pentesters. Written in Rust.
 
 ## WARNING
 Ronflex tries to suspend all known AV/EDRs and other security product processes. There is a high chance that the system will be unstable after Ronflex did its thing ! Use at your own risks.
 
 ## Known limitations
-At the moment, Ronflex is not able to suspend processes protected by Anti-Malware Protected Process (AM-PPL). WIP..
+At the moment, Ronflex is not able to suspend processes protected by Anti-Malware Protected Process (AM-PPL), which is now quite common. WIP..
 
 ## Todo
 - [x] Loop over known processes to suspend them
@@ -16,9 +16,10 @@ At the moment, Ronflex is not able to suspend processes protected by Anti-Malwar
 - [ ] Embbed a method to bypass AM-PPL. [PPLmedic](https://github.com/itm4n/PPLmedic) maybe ?
 
 # Quick start
+No time ? Let's make it short then.
 
 ## Binary
-If you're in a hurry, you will find a ready to deploy x64 binary for Windows in the repo Release section. However, you should take the time to compile it yourself.
+In case of an emergency, you will find a ready to deploy x64 binary for Windows in the repo Release section. However, consider taking the time to compile it yourself.
 
 ## Cross-compile from Linux
 
