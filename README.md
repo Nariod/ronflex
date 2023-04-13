@@ -11,7 +11,7 @@ At the moment, Ronflex is not able to suspend processes protected Anti-Malware P
 - [x] Loop over known processes to suspend them
 - [x] Support for a specific process target
 - [x] Move the NtSuspendProcess and NtClose API calls to syscalls 
-- [ ] Move the remaining API calls to syscalls
+- [x] Move the remaining API calls to syscalls
 - [ ] Embbed a method to bypass AM-PPL. [PPLmedic](https://github.com/itm4n/PPLmedic) maybe ?
 
 # Quick start

