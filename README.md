@@ -1,8 +1,8 @@
 # Ronflex
-Rust offensive tool to suspend all known AV/EDRs processes using syscalls and the undocumented NtSuspendProcess API. Made with <3 for pentesters.
+Attempts to suspend all known AV/EDRs processes using syscalls and the undocumented NtSuspendProcess API. Made with <3 for pentesters. Written in Rust.
 
 ## WARNING
-Ronflex tries to suspend all known AV/EDRs and other security products processes. There is a high chance that the system will be unstable after Ronflex did its thing ! Use at your own risks.
+Ronflex tries to suspend all known AV/EDRs and other security product processes. There is a high chance that the system will be unstable after Ronflex did its thing ! Use at your own risks.
 
 ## Known limitations
 At the moment, Ronflex is not able to suspend processes protected by Anti-Malware Protected Process (AM-PPL). WIP..
@@ -12,12 +12,14 @@ At the moment, Ronflex is not able to suspend processes protected by Anti-Malwar
 - [x] Support for a specific process target
 - [x] Move the NtSuspendProcess and NtClose API calls to syscalls 
 - [x] Move the remaining API calls to syscalls
+- [ ] Dynamically load the list of known processes from a file at compile time
 - [ ] Embbed a method to bypass AM-PPL. [PPLmedic](https://github.com/itm4n/PPLmedic) maybe ?
 
 # Quick start
 
 ## Binary
-If you're in a  hurry, you will find a ready to deploy x64 binary for Windows. However, you should take time to compile it yourself.
+If you're in a hurry, you will find a ready to deploy x64 binary for Windows in the repo Release section. However, you should take the time to compile it yourself.
+
 ## Cross-compile from Linux
 
 Install and configure Rust:
@@ -48,6 +50,9 @@ Alternatively, you can freeze a specific target process by passing the exact pro
 - `ronflex.exe notepad.exe`
 
 ![Notepad put to sleep](img/ronflex_notepad.png)
+
+# Usage and details
+WIP
 
 ## Credits
 - janoglezcampos for his [rust_syscalls](https://github.com/janoglezcampos/rust_syscalls) project
