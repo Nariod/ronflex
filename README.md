@@ -5,7 +5,7 @@ Rust offensive tool to suspend all known AV/EDRs processes using syscalls and th
 Ronflex tries to suspend all known AV/EDRs and other security products processes. There is a high chance that the system will be unstable after Ronflex did its thing ! Use at your own risks.
 
 ## Known limitations
-At the moment, Ronflex is not able to suspend processes protected Anti-Malware Protected Process (AM-PPL). WIP..
+At the moment, Ronflex is not able to suspend processes protected by Anti-Malware Protected Process (AM-PPL). WIP..
 
 ## Todo
 - [x] Loop over known processes to suspend them
