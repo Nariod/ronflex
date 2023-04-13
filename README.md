@@ -1,18 +1,18 @@
 # Ronflex
-Rust offensive tool to suspend all known AV/EDRs processes, using syscalls and the undocumented NtSuspendProcess API. Made with <3 for pentesters.
+Rust offensive tool to suspend all known AV/EDRs processes using syscalls and the undocumented NtSuspendProcess API. Made with <3 for pentesters.
 
 ## WARNING
-Ronflex suspends all known AV/EDRs and other security products processes. There is a high chance that the system will be unstable after Ronflex did its thing ! Use at your own risks.
+Ronflex tries to suspend all known AV/EDRs and other security products processes. There is a high chance that the system will be unstable after Ronflex did its thing ! Use at your own risks.
 
 ## Known limitations
-At the moment, this tool is not able to suspend processes protected by either Windows "Anti-Tamper" protection or "Credential Guard".
+At the moment, Ronflex is not able to suspend processes protected Anti-Malware Protected Process (AM-PPL). WIP..
 
 ## Todo
 - [x] Loop over known processes to suspend them
 - [x] Support for a specific process target
 - [x] Move the NtSuspendProcess and NtClose API calls to syscalls 
 - [ ] Move the remaining API calls to syscalls
-- [ ] Embbed a method to bypass Windows Anti-Tamper protection
+- [ ] Embbed a method to bypass AM-PPL. [PPLmedic](https://github.com/itm4n/PPLmedic) maybe ?
 
 # Quick start
 
