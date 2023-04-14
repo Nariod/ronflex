@@ -79,15 +79,16 @@ fn enable_privilege() -> bool {
         let ntstatus = OpenProcessToken(GetCurrentProcess(), TOKEN_ADJUST_PRIVILEGES, htoken);
         match ntstatus {
             0 => {
-                let message = format!("[+] Successfully used OpenProcessToken");
-                println!("{}", message);
-            }
-            _ => {
                 let message = format!("[-] OpenProcessToken call failed.. NTSTATUS: {}", ntstatus);
                 println!("{}", message);
                 let _ = syscall!("NtClose", htoken);
                 return false;
             }
+            _ => {
+                let message = format!("[+] Successfully used OpenProcessToken");
+                println!("{}", message);
+            }
+
         }
         /*
         let ntstatus = NtOpenProcessToken(
@@ -141,10 +142,6 @@ fn enable_privilege() -> bool {
 
         match ntstatus {
             0 => {
-                let message = format!("[+] Successfully used AdjustTokenPrivileges");
-                println!("{}", message);
-            }
-            _ => {
                 let message = format!(
                     "[-] AdjustTokenPrivileges call failed.. NTSTATUS: {}",
                     ntstatus
@@ -153,6 +150,11 @@ fn enable_privilege() -> bool {
                 let _ = syscall!("NtClose", htoken);
                 return false;
             }
+            _ => {
+                let message = format!("[+] Successfully used AdjustTokenPrivileges");
+                println!("{}", message);
+            }
+
         }
         /*
         let mut token_privileges: *mut TOKEN_PRIVILEGES = std::ptr::null_mut();
