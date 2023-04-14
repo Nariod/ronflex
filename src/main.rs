@@ -2,13 +2,6 @@ use colored::Colorize;
 use ntapi::ntapi_base::CLIENT_ID;
 use ntapi::ntioapi::NtLoadDriver;
 use rust_syscalls::syscall;
-use winapi::shared::minwindef::DWORD;
-use winapi::shared::minwindef::FALSE;
-use winapi::shared::ntdef::UNICODE_STRING;
-use winapi::um::errhandlingapi::GetLastError;
-use winapi::um::winnt::TOKEN_ELEVATION;
-use winapi::um::winnt::TOKEN_QUERY;
-use winapi::um::winnt::TokenElevation;
 use std::env;
 use std::fs;
 use std::include_bytes;
@@ -20,40 +13,35 @@ use std::ptr::null_mut;
 use sysinfo::PidExt;
 use sysinfo::ProcessExt;
 use sysinfo::SystemExt;
+use winapi::shared::minwindef::DWORD;
+use winapi::shared::minwindef::FALSE;
 use winapi::shared::ntdef::PHANDLE;
 use winapi::shared::ntdef::PUNICODE_STRING;
+use winapi::shared::ntdef::UNICODE_STRING;
 use winapi::shared::ntdef::{HANDLE, NTSTATUS, NULL, OBJECT_ATTRIBUTES};
+use winapi::um::errhandlingapi::GetLastError;
 use winapi::um::processthreadsapi::GetCurrentProcess;
 use winapi::um::processthreadsapi::OpenProcessToken;
 use winapi::um::securitybaseapi::AdjustTokenPrivileges;
 use winapi::um::securitybaseapi::GetTokenInformation;
 use winapi::um::winbase::LookupPrivilegeValueW;
+use winapi::um::winnt::TokenElevation;
 use winapi::um::winnt::TokenPrivileges;
 use winapi::um::winnt::PROCESS_SUSPEND_RESUME;
 use winapi::um::winnt::SE_PRIVILEGE_ENABLED;
 use winapi::um::winnt::TOKEN_ADJUST_PRIVILEGES;
+use winapi::um::winnt::TOKEN_ELEVATION;
 use winapi::um::winnt::TOKEN_PRIVILEGES;
+use winapi::um::winnt::TOKEN_QUERY;
 use winreg::enums::*;
 use winreg::RegKey;
 
-const SE_DEBUG_NAME: [u16 ; 17] = [83u16, 101, 68, 101, 98, 117, 103, 80, 114, 105, 118, 105, 108, 101, 103, 101, 0];
+const SE_DEBUG_NAME: [u16; 17] = [
+    83u16, 101, 68, 101, 98, 117, 103, 80, 114, 105, 118, 105, 108, 101, 103, 101, 0,
+];
 const DRIVERNAME: &str = "ProcExp64";
 
-pub fn create_unicode_string(s: &[u16]) -> UNICODE_STRING {
-    // source: https://not-matthias.github.io/posts/kernel-driver-with-rust/
-    let len = s.len();
-
-    let n = if len > 0 && s[len - 1] == 0 { len - 1 } else { len };
-
-    UNICODE_STRING {
-        Length: (n * 2) as u16,
-        MaximumLength: (len * 2) as u16,
-        Buffer: s.as_ptr() as _,
-    }
-}
-
 fn load_driver(drivername: String) -> bool {
-
     let mut p_drivername: UNICODE_STRING = create_unicode_string(obfstr::wide!("ProcExp64\0"));
     //println!("{:#?}", p_drivername);
 
@@ -73,6 +61,23 @@ fn load_driver(drivername: String) -> bool {
         }
     }
     return true;
+}
+
+pub fn create_unicode_string(s: &[u16]) -> UNICODE_STRING {
+    // source: https://not-matthias.github.io/posts/kernel-driver-with-rust/
+    let len = s.len();
+
+    let n = if len > 0 && s[len - 1] == 0 {
+        len - 1
+    } else {
+        len
+    };
+
+    UNICODE_STRING {
+        Length: (n * 2) as u16,
+        MaximumLength: (len * 2) as u16,
+        Buffer: s.as_ptr() as _,
+    }
 }
 
 pub fn is_elevated() -> bool {
@@ -102,10 +107,17 @@ fn enable_privilege() -> bool {
         privilege.PrivilegeCount = 1;
         privilege.Privileges[0].Attributes = SE_PRIVILEGE_ENABLED;
 
-        let ntstatus = LookupPrivilegeValueW(null_mut(), SE_DEBUG_NAME.as_ptr(), &mut privilege.Privileges[0].Luid);
+        let ntstatus = LookupPrivilegeValueW(
+            null_mut(),
+            SE_DEBUG_NAME.as_ptr(),
+            &mut privilege.Privileges[0].Luid,
+        );
         match ntstatus {
             FALSE => {
-                let message = format!("[-] LookupPrivilegeValueW call failed.. NTSTATUS: {}", ntstatus);
+                let message = format!(
+                    "[-] LookupPrivilegeValueW call failed.. NTSTATUS: {}",
+                    ntstatus
+                );
                 println!("{}", message);
                 println!("{}", GetLastError());
                 let _ = syscall!("NtClose", htoken);
@@ -130,7 +142,6 @@ fn enable_privilege() -> bool {
                 let message = format!("[+] Successfully used OpenProcessToken");
                 println!("{}", message);
             }
-
         }
         /*
         let ntstatus = NtOpenProcessToken(
@@ -196,7 +207,6 @@ fn enable_privilege() -> bool {
                 let message = format!("[+] Successfully used AdjustTokenPrivileges");
                 println!("{}", message);
             }
-
         }
         /*
         let mut token_privileges: *mut TOKEN_PRIVILEGES = std::ptr::null_mut();
@@ -214,7 +224,7 @@ fn enable_privilege() -> bool {
         */
         let _ = syscall!("NtClose", htoken);
     }
-    
+
     return true;
 }
 
@@ -400,7 +410,10 @@ fn main() {
     let res_create_reg = create_registry_key(DRIVERNAME.to_string(), driverpath);
     match res_create_reg {
         Ok(()) => println!("[+] Successfully wrote {} registry keys", DRIVERNAME),
-        Err(e) => panic!("[-] Error while writting {} registry keys: {}", DRIVERNAME, e),
+        Err(e) => panic!(
+            "[-] Error while writting {} registry keys: {}",
+            DRIVERNAME, e
+        ),
     }
 
     let res_enable_priv = enable_privilege();
