@@ -150,6 +150,12 @@ dependencies = [
 ]
 
 [[package]]
+name = "obfstr"
+version = "0.4.3"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "e3ba2979b86cc910a6d13837ef97fef0c6b68fa807c5e014d622449db18351dc"
+
+[[package]]
 name = "once_cell"
 version = "1.17.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -183,6 +189,7 @@ version = "0.1.0"
 dependencies = [
  "colored",
  "ntapi",
+ "obfstr",
  "rust_syscalls",
  "sysinfo",
  "winapi",

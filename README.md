@@ -20,7 +20,7 @@ Inspired from Backstab, Ronflex will need to:
 - [x] Embedded PROCEXP driver is dropped to disk
 - [x] Registry keys under HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Services are created
     --> Need to investigate the exact keys to set
-- [x] The privilege SE_PRIVILEGE_ENABLED is acquired because it is necessary to load the driver
+- [ ] The privilege SE_PRIVILEGE_ENABLED is acquired because it is necessary to load the driver
 - [ ] Driver is loaded using NtLoadDriver to avoid creating a service
 - [ ] The created Registry key is deleted (service not visible during execution)
 - [ ] Communication with the driver is via using DeviceIoControl
