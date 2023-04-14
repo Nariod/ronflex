@@ -17,10 +17,10 @@ At the moment, Ronflex is not able to suspend processes protected by Anti-Malwar
 
 Inspired from Backstab, Ronflex will need to:
 
-- [x] Embedded PROCEXP.sys driver is dropped to disk
-- [ ] Registry key under HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Services is created
+- [x] Embedded PROCEXP driver is dropped to disk
+- [x] Registry keys under HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Services are created
     --> Need to investigate the exact keys to set
-- [ ] The privilege SE_PRIVILEGE_ENABLED is acquired because it is necessary to load the driver
+- [x] The privilege SE_PRIVILEGE_ENABLED is acquired because it is necessary to load the driver
 - [ ] Driver is loaded using NtLoadDriver to avoid creating a service
 - [ ] The created Registry key is deleted (service not visible during execution)
 - [ ] Communication with the driver is via using DeviceIoControl
