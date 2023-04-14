@@ -1,6 +1,9 @@
 use colored::Colorize;
 use ntapi::ntapi_base::CLIENT_ID;
 use rust_syscalls::syscall;
+use winapi::um::winnt::TOKEN_ELEVATION;
+use winapi::um::winnt::TOKEN_QUERY;
+use winapi::um::winnt::TokenElevation;
 use std::env;
 use std::fs;
 use std::include_bytes;
@@ -46,6 +49,24 @@ fn load_driver(drivername: String) -> bool {
         }
     }
     return true;
+}
+
+pub fn is_elevated() -> bool {
+    // source: https://github.com/rayiik/mimiRust/blob/main/src/utilities/mod.rs
+    let mut htoken: HANDLE = null_mut();
+    let mut token_elevate: TOKEN_ELEVATION = TOKEN_ELEVATION { TokenIsElevated: 0 };
+    let mut size: u32 = 0u32;
+    unsafe {
+        OpenProcessToken(GetCurrentProcess(), TOKEN_QUERY, &mut htoken);
+        GetTokenInformation(
+            htoken,
+            TokenElevation,
+            &mut token_elevate as *const _ as *mut _,
+            std::mem::size_of::<TOKEN_ELEVATION>() as u32,
+            &mut size,
+        );
+        return token_elevate.TokenIsElevated == 1;
+    }
 }
 
 fn enable_privilege() -> bool {
@@ -309,6 +330,16 @@ fn main() {
     let args: Vec<String> = env::args().collect();
 
     println!("Run this tool as SYSTEM for maximum effect");
+
+    let is_elevated = is_elevated();
+    match is_elevated {
+        true => {
+            println!("[+] You have elevated rights, let's start..");
+        }
+        false => {
+            panic!("[-] You don't have elevated rights. Aborting..");
+        }
+    }
 
     let is_driver_written = write_driver();
     let driverpath = match is_driver_written {
