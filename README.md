@@ -12,7 +12,7 @@ At the moment, Ronflex is not able to suspend processes protected by Anti-Malwar
 - [x] Check if the process is running in elevated context
 - [x] Write PROCEXP driver to disk
 - [x] Create the appropriate registry keys to load the driver
-- [ ] Get all privileges for the current process
+- [x] Get SE_LOAD_DRIVER privilege for the current process
 - [ ] Load the PROCEXP driver using NtLoadDriver
 - [ ] Call the driver using DeviceIoControl
 - [ ] Suspend all target processes 

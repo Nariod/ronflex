@@ -37,7 +37,7 @@ use winapi::um::winnt::TOKEN_PRIVILEGES;
 use winapi::um::winnt::TOKEN_QUERY;
 use winreg::enums::*;
 use winreg::RegKey;
-use winapi::um::winnt::SE_LOAD_DRIVER_NAME;
+use windows::Win32::Security::SE_LOAD_DRIVER_NAME;
 
 const DRIVERNAME: &str = "ProcExp64";
 

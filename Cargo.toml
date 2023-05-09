@@ -13,3 +13,10 @@ ntapi = "0.4.0"
 winreg = "0.50.0"
 obfstr = "0.4.3"
 rust_syscalls = {git = "https://github.com/Nariod/rust_syscalls", features = ["_INDIRECT_"]}
+
+
+[dependencies.windows]
+version = "0"
+features = [
+    "Win32_Security",
+]
