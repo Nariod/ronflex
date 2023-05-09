@@ -336,49 +336,11 @@ fn evil(target: &str) {
 
 fn main() {
     // product list source https://github.com/BishopFox/sliver/blob/041ae65c61629e65646623e472d658472022d84e/client/command/processes/ps.go
-    let product_list: Vec<&str> = vec![
-        "ccSvcHst.exe",
-        "cb.exe",
-        "RepMgr.exe",
-        "RepUtils.exe",
-        "RepUx.exe",
-        "RepWSC.exe",
-        "scanhost.exe",
-        "MsMpEng.exe",
-        "SenseIR.exe",
-        "SenseCncProxy.exe",
-        "MsSense.exe",
-        "MpCmdRun.exe",
-        "MonitoringHost.exe",
-        "HealthService.exe",
-        "smartscreen.exe",
-        "CSFalconService.exe",
-        "CSFalconContainer.exe",
-        "bdservicehost.exe",
-        "bdagent.exe",
-        "bdredline.exe",
-        "coreServiceShell.exe",
-        "ds_monitor.exe",
-        "Notifier.exe",
-        "dsa.exe",
-        "ds_nuagent.exe",
-        "coreFrameworkHost.exe",
-        "SentinelServiceHost.exe",
-        "SentinelStaticEngine.exe",
-        "SentinelStaticEngineScanner.exe",
-        "SentinelAgent.exe",
-        "SentinelAgentWorker.exe",
-        "SentinelHelperService.exe",
-        "SentinelBrowserNativeHost.exe",
-        "SentinelUI.exe",
-        "Sysmon.exe",
-        "Sysmon64.exe",
-        "CylanceSvc.exe",
-        "CylanceUI.exe",
-        "TaniumClient.exe",
-        "TaniumCX.exe",
-        "TaniumDetectEngine.exe",
-    ];
+    let file_content = include_str!("../resources/processes.txt");
+    let mut product_list: Vec<&str> = vec![];
+    for line in file_content.lines() {
+        product_list.push(line)
+    }
     //let drivername = "ProcExp64";
 
     let args: Vec<String> = env::args().collect();

@@ -8,22 +8,16 @@ Ronflex tries to suspend all known AV/EDRs and other security product processes.
 At the moment, Ronflex is not able to suspend processes protected by Anti-Malware Protected Process (AM-PPL), which is now quite common. WIP..
 
 ## Todo
-- [x] Loop over known processes to suspend them
-- [x] Support for a specific process target
-- [x] Move the NtSuspendProcess and NtClose API calls to syscalls 
-- [x] Move the remaining API calls to syscalls
-- [ ] Dynamically load the list of known processes from a file at compile time
-
-
-Inspired from Backstab, Ronflex will need to:
-
-- [x] Embedded PROCEXP driver is dropped to disk
-- [x] Registry keys under HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Services are created
-    --> Need to investigate the exact keys to set
-- [x] The privilege SE_PRIVILEGE_ENABLED is acquired because it is necessary to load the driver
-- [ ] Driver is loaded using NtLoadDriver to avoid creating a service
-- [ ] The created Registry key is deleted (service not visible during execution)
-- [ ] Communication with the driver is via using DeviceIoControl
+- [x] Dynamically load the list of known processes from a file at compile time
+- [x] Check if the process is running in elevated context
+- [x] Write PROCEXP driver to disk
+- [x] Create the appropriate registry keys to load the driver
+- [ ] Get all privileges for the current process
+- [ ] Load the PROCEXP driver using NtLoadDriver
+- [ ] Call the driver using DeviceIoControl
+- [ ] Suspend all target processes 
+- [ ] Update the PROCEXP driver to the latest one
+- [ ] Move all Windows calls to indirect syscalls. Bananaphone maybe ?
 
 # Quick start
 No time ? Let's make it short then.
