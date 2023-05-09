@@ -41,13 +41,18 @@ use windows::Win32::Security::SE_LOAD_DRIVER_NAME;
 
 const DRIVERNAME: &str = "ProcExp64";
 
-fn load_driver(drivername: String) -> bool {
-    let mut p_drivername: UNICODE_STRING = create_unicode_string(obfstr::wide!("ProcExp64\0"));
+fn load_driver(driverpath: String) -> bool {
+    let mut driverpath_vec: Vec<u16> = driverpath.encode_utf16().collect();
+    driverpath_vec.push(0);
+
+    let mut driverpath_unicode: UNICODE_STRING = driverpath_vec;
+
+    //let mut p_driverpath: UNICODE_STRING = create_unicode_string(obfstr::wide!(driverpath));
     //println!("{:#?}", p_drivername);
 
     unsafe {
         //let ntstatus = syscall!("NtLoadDriver", p_drivername);
-        let ntstatus = NtLoadDriver(&mut p_drivername);
+        let ntstatus = NtLoadDriver(&mut driverpath_unicode);
         match ntstatus {
             0 => {
                 let message = format!("[+] Successfully used NtLoadDriver");
@@ -61,23 +66,6 @@ fn load_driver(drivername: String) -> bool {
         }
     }
     return true;
-}
-
-pub fn create_unicode_string(s: &[u16]) -> UNICODE_STRING {
-    // source: https://not-matthias.github.io/posts/kernel-driver-with-rust/
-    let len = s.len();
-
-    let n = if len > 0 && s[len - 1] == 0 {
-        len - 1
-    } else {
-        len
-    };
-
-    UNICODE_STRING {
-        Length: (n * 2) as u16,
-        MaximumLength: (len * 2) as u16,
-        Buffer: s.as_ptr() as _,
-    }
 }
 
 fn enable_loaddriver_privilege() -> bool {
@@ -326,7 +314,7 @@ fn main() {
         }
     }
 
-    let res_load_driver = load_driver(DRIVERNAME.to_string());
+    let res_load_driver = load_driver(driverpath.as_path().display().to_string());
     match res_load_driver {
         true => {
             println!("[+] Successfully loaded {} driver !", DRIVERNAME);
