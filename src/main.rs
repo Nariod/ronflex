@@ -80,7 +80,7 @@ pub fn create_unicode_string(s: &[u16]) -> UNICODE_STRING {
     }
 }
 
-fn enable_privilege() -> bool {
+fn enable_loaddriver_privilege() -> bool {
     // source: https://github.com/rayiik/mimiRust/blob/main/src/utilities/mod.rs
     unsafe {
         let mut htoken = null_mut();
@@ -316,13 +316,13 @@ fn main() {
         ),
     }
 
-    let res_enable_priv = enable_privilege();
+    let res_enable_priv = enable_loaddriver_privilege();
     match res_enable_priv {
         true => {
-            println!("[+] Successfully got SE_DEBUG privileges !");
+            println!("[+] Successfully got SE_LOAD_DRIVER privileges !");
         }
         false => {
-            panic!("[-] Error while getting SE_DEBUG privileges");
+            panic!("[-] Error while getting SE_LOAD_DRIVER privileges");
         }
     }
 
