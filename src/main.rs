@@ -4,64 +4,54 @@ use ntapi::ntioapi::NtLoadDriver;
 use rust_syscalls::syscall;
 use std::env;
 use std::fs;
+use std::ptr;
+use std::ffi::CStr;
+use std::ffi::CString;
 use std::fs::File;
 use std::include_bytes;
 use std::mem::size_of;
-use std::path::Path;
-use std::path::PathBuf;
+use winapi::um::winnt::*;
+use winapi::um::winreg::*;
 use std::process::exit;
 use std::process::Command;
 use std::ptr::null_mut;
 use sysinfo::PidExt;
 use sysinfo::ProcessExt;
 use sysinfo::SystemExt;
-use winapi::shared::minwindef::DWORD;
-use winapi::shared::minwindef::FALSE;
 use winapi::shared::ntdef::PHANDLE;
-use winapi::shared::ntdef::PUNICODE_STRING;
-use winapi::shared::ntdef::UNICODE_STRING;
-use winapi::shared::ntdef::{HANDLE, NTSTATUS, NULL, OBJECT_ATTRIBUTES};
-use winapi::um::errhandlingapi::GetLastError;
-use winapi::um::processthreadsapi::GetCurrentProcess;
-use winapi::um::processthreadsapi::OpenProcessToken;
-use winapi::um::securitybaseapi::AdjustTokenPrivileges;
+use winapi::shared::ntdef::{HANDLE, NULL, OBJECT_ATTRIBUTES};
 use winapi::um::securitybaseapi::GetTokenInformation;
 use winapi::um::winbase::LookupPrivilegeValueW;
-use winapi::um::winnt::TokenElevation;
-use winapi::um::winnt::TokenPrivileges;
-use winapi::um::winnt::PROCESS_SUSPEND_RESUME;
-use winapi::um::winnt::SE_PRIVILEGE_ENABLED;
-use winapi::um::winnt::TOKEN_ADJUST_PRIVILEGES;
-use winapi::um::winnt::TOKEN_ELEVATION;
-use winapi::um::winnt::TOKEN_PRIVILEGES;
-use winapi::um::winnt::TOKEN_QUERY;
-use winreg::enums::*;
-use winreg::RegKey;
+use winapi::ctypes::*;
+use winapi::shared::minwindef::*;
+use winapi::shared::ntdef::{NTSTATUS, PUNICODE_STRING, UNICODE_STRING};
+use winapi::um::errhandlingapi::GetLastError;
+use winapi::um::libloaderapi::GetModuleHandleA;
+use winapi::um::winnt::*;
+use winapi::um::winreg::*;
+use winapi::um::processthreadsapi::{OpenProcessToken, GetCurrentProcess};
+use winapi::um::winbase::LookupPrivilegeValueA;
+use winapi::um::securitybaseapi::AdjustTokenPrivileges;
+use winapi::um::libloaderapi::GetProcAddress;
+use winapi::um::fileapi::{CreateFileA, OPEN_EXISTING, GetFinalPathNameByHandleA};
 use windows::Win32::Security::SE_LOAD_DRIVER_NAME;
+use winapi::um::handleapi::{CloseHandle, INVALID_HANDLE_VALUE};
+use widestring::WideString;
 
 const DRIVERNAME: &str = "ProcExp64";
 
-fn create_unicode_string(s: &[u16]) -> UNICODE_STRING {
-    let len = s.len();
+fn load_driver(reg_path: String) -> bool {
+    // thanks to https://github.com/DownWithUp/KLoad/blob/8532cee0c0ea4c361b22fb8bd24094a636a76eec/src/main.rs#L30
 
-    let n = if len > 0 && s[len - 1] == 0 { len - 1 } else { len };
-
-    UNICODE_STRING {
-        Length: (n * 2) as u16,
-        MaximumLength: (len * 2) as u16,
-        Buffer: s.as_ptr() as _,
-    }
-}
-
-fn load_driver(driverpath: String) -> bool {
-    //let mut driverpath_vec: Vec<u16> = driverpath.encode_utf16().collect();
-    //driverpath_vec.push(0);
-
-    let mut driverpath_unicode: UNICODE_STRING = create_unicode_string("C:\\Users\\vboxuser\\Desktop\\PROCEXP");
-
+    let wstr = WideString::from_str(&reg_path);
     unsafe {
+        let mut driver_reg_path: UNICODE_STRING = std::mem::zeroed();
+        driver_reg_path.Buffer = wstr.as_vec().as_ptr() as *mut u16;
+        driver_reg_path.Length = (wstr.len() * 2) as u16;
+        driver_reg_path.MaximumLength = driver_reg_path.Length + 2;
+
         //let ntstatus = syscall!("NtLoadDriver", p_drivername);
-        let ntstatus = NtLoadDriver(&mut driverpath_unicode);
+        let ntstatus = NtLoadDriver(&driver_reg_path as *const UNICODE_STRING as *mut UNICODE_STRING);
         match ntstatus {
             0 => {
                 let message = format!("[+] Successfully used NtLoadDriver");
@@ -193,24 +183,9 @@ fn enable_loaddriver_privilege() -> bool {
                 println!("{}", message);
             }
         }
-        /*
-        let mut token_privileges: *mut TOKEN_PRIVILEGES = std::ptr::null_mut();
-        let mut token_privileges_length = 0u32;
-        let mut token_privileges_vec = vec![0u8; token_privileges_length as usize];
-        let _ = GetTokenInformation(
-            htoken as HANDLE,
-            TokenPrivileges,
-            token_privileges as *mut std::ffi::c_void,
-            token_privileges_length,
-            &mut token_privileges_length as *mut u32,
-        );
-        println!("{:?}", token_privileges_vec);
-        let _ = syscall!("NtClose", htoken);
-        */
         let _ = syscall!("NtClose", htoken);
 
         // for testing purpose:
-        
         let cmd = Command::new("cmd")
             .args(["/C", "whoami /priv"])
             .output()
@@ -224,10 +199,10 @@ fn enable_loaddriver_privilege() -> bool {
 }
 
 fn create_registry_key(
-    drivername: String,
-    driverpath: PathBuf,
+    drivername: &CStr,
+    nt_driver_path: &[CHAR; MAX_PATH], path_length: DWORD
 ) -> Result<(), Box<dyn std::error::Error>> {
-    //let reg_path = format!("\\SYSTEM\\CurrentControlSet\\Services{}", servicename);
+    //TODO : take the regitry key func from KLoad project, winreg does not work.
     let hkcu = RegKey::predef(HKEY_LOCAL_MACHINE);
     let path = Path::new("SYSTEM")
         .join("CurrentControlSet")
@@ -235,7 +210,7 @@ fn create_registry_key(
         .join(&drivername);
 
     let (key1, _) = hkcu.create_subkey(&path)?;
-    let value: u32 = 0;
+    let value: u32 = 1;
     key1.set_value("Type", &value)?;
 
     let (key2, _) = hkcu.create_subkey(&path)?;
@@ -247,12 +222,32 @@ fn create_registry_key(
     let driverpath = driverpath.to_str().unwrap();
     let (key4, _) = hkcu.create_subkey(&path)?;
     key4.set_value("ImagePath", &driverpath)?;
-    /*
-        let sz_val: String = key.get_value("TestSZ")?;
-        key.delete_value("TestSZ")?;
-        println!("TestSZ = {}", sz_val);
-    */
+
     Ok(())
+}
+
+// Converts the input driver path to an VOLUME_NAME_NT file path. This is done by temporarily opening the file.
+fn get_nt_path(driver_path: &CStr, nt_file_path: &mut [CHAR; MAX_PATH]) -> Result<DWORD, DWORD> {
+    unsafe {
+        let file_handle  = CreateFileA(driver_path.as_ptr() as *const i8, GENERIC_READ, FILE_SHARE_READ, 
+            ptr::null_mut(), OPEN_EXISTING, 0, ptr::null_mut());
+
+        if file_handle == INVALID_HANDLE_VALUE {
+            println!("GLE for CreateFile is: {}", GetLastError());
+            return Err(GetLastError());
+        }
+
+        let return_size = GetFinalPathNameByHandleA(file_handle, nt_file_path.as_ptr() as *mut i8, MAX_PATH as u32, 
+        FILE_NAME_NORMALIZED | VOLUME_NAME_NT);
+        if return_size == 0 {
+            println!("Failed on GetFinalPathNameByHandleA");
+            return Err(GetLastError());
+        }
+
+        CloseHandle(file_handle);
+
+        return Ok(return_size);
+    }
 }
 
 fn write_driver() -> Result<PathBuf, Box<dyn std::error::Error>> {
@@ -303,8 +298,13 @@ fn main() {
         }
         Err(e) => panic!("[-] Error while dropping ProcExp driver on disk: {}", e),
     };
+    
+    let mut nt_driver_path: [CHAR; MAX_PATH] = [0; MAX_PATH];
+    let mut nt_driver_path_cstring = CString::new("PROCEXP").unwrap().as_c_str();
 
-    let res_create_reg = create_registry_key(DRIVERNAME.to_string(), driverpath.clone());
+    //TODO : get result of get_nt_path
+    match get_nt_path(nt_driver_path_cstring, &mut nt_driver_path) 
+    let res_create_reg = create_registry_key(DRIVERNAME.to_string(), nt_driver_path_cstring.clone());
     match res_create_reg {
         Ok(()) => println!("[+] Successfully wrote {} registry keys", DRIVERNAME),
         Err(e) => panic!(
@@ -323,7 +323,10 @@ fn main() {
         }
     }
 
-    let res_load_driver = load_driver(driverpath.as_path().display().to_string());
+    let reg_path = format!("\\REGISTRY\\MACHINE\\SYSTEM\\CurrentControlSet\\Services\\{}", DRIVERNAME);
+    println!("{}", reg_path.clone());
+
+    let res_load_driver = load_driver(reg_path);
     match res_load_driver {
         true => {
             println!("[+] Successfully loaded {} driver !", DRIVERNAME);
@@ -332,7 +335,9 @@ fn main() {
             panic!("[-] Error while loading {} driver", DRIVERNAME);
         }
     }
+
     exit(0);
+
 
     if args.len() == 2 {
         println!(

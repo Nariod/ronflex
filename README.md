@@ -16,6 +16,7 @@ At the moment, Ronflex is not able to suspend processes protected by Anti-Malwar
 - [ ] Load the PROCEXP driver using NtLoadDriver
 - [ ] Call the driver using DeviceIoControl
 - [ ] Suspend all target processes 
+- [ ] Clean, fmt, and clippy the code
 - [ ] Update the PROCEXP driver to the latest one
 - [ ] Move all Windows calls to indirect syscalls
 
